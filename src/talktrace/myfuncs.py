@@ -12,8 +12,8 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletion
 import tempfile
 from pyparsing import line
-from .localization.translation import TRANSLATIONS
-from .config.config_manager import ConfigManager
+from localization.translation import TRANSLATIONS
+from config.config_manager import ConfigManager
 
 
 # Helper function to get translated text
@@ -205,9 +205,9 @@ def llm_analysis_openai(
                         "properties": {
                             "#": {"type": "integer", "description": "Nummerierung"},
                             "Shortcode": {"type": "string", "description": "Der Shortcode"},
-                            "Lehreräußerung (kurz)": {"type": "string", "description": "Die Äußerung"}
+                            "Impuls": {"type": "string", "description": "Die Äußerung"}
                         },
-                        "required": ["#", "Shortcode", "Lehreräußerung (kurz)"],
+                        "required": ["#", "Shortcode", "Impuls"],
                         "additionalProperties": False
                     },
                     "description": "Liste von Analyseobjekten"

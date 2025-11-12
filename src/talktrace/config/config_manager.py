@@ -69,20 +69,102 @@ class ConfigManager:
         self.config.set('PROMPTS', f'{prompt_type}_prompt', text)
         self.save_config()
 
-
+    ### Model List Retrieval and Manipulation Methods ###
     def get_models(self, provider=None):
         if not self.config.has_section('MODELS'):
             self.config.add_section('MODELS')
         
         if provider:
             models = self.config.get('MODELS', f'{provider}_models', fallback='[]')
-            return eval(models)  # Convert string representation to list
+            return [v["name"] for v in eval(models)]
+          # Convert string representation to list
         else:
             # Return all models combined
             openai_models = eval(self.config.get('MODELS', 'openai_models', fallback='[]'))
             groq_models = eval(self.config.get('MODELS', 'groq_models', fallback='[]'))
-            return openai_models + groq_models
+            return [v["name"] for v in openai_models + groq_models]
+
+
+    def set_models(self, provider, models):
+        if provider not in ['openai', 'groq']:
+            raise ValueError("Provider must be either 'openai' or 'groq'")
         
+        if not self.config.has_section('MODELS'):
+            self.config.add_section('MODELS')
+            
+        self.config.set('MODELS', f'{provider}_models', str(models))
+        self.save_config()
+
+
+    def add_model(self, provider, model_name, input_cost, output_cost):
+        """
+        Adds a new model to the provider's model list in the config.
+        Example:
+            self.add_model("openai", "gpt-6", 0.007, 0.014)
+        """
+        if provider not in ['openai', 'groq']:
+            raise ValueError("Provider must be either 'openai' or 'groq'")
+        
+        if not self.config.has_section('MODELS'):
+            self.config.add_section('MODELS')
+
+        key = f'{provider}_models'
+
+        # Safely load the existing models
+        try:
+            current_models = eval(self.config.get('MODELS', key, fallback='[]'))
+        except Exception:
+            current_models = []
+
+        # Check if model already exists
+        if any(m['name'] == model_name for m in current_models):
+            print(f"Model '{model_name}' already exists for provider '{provider}'. Skipping.")
+            return
+
+        # Append the new model
+        current_models.append({
+            "name": model_name,
+            "input": input_cost,
+            "output": output_cost
+        })
+
+        # Save back to config
+        self.set_models(provider, current_models)
+
+    def remove_model(self, model_names):
+        """
+        Removes one or more models from the config for both providers (openai/groq).
+        Example:
+            self.remove_model("gpt-4o")
+            self.remove_model(["gpt-5", "deepseek-r1-distill-llama-70b"])
+        """
+        if not isinstance(model_names, list):
+            model_names = [model_names]
+
+        if not self.config.has_section('MODELS'):
+            self.config.add_section('MODELS')
+
+        for provider in ['openai', 'groq']:
+            key = f'{provider}_models'
+
+            # Load current models safely
+            try:
+                current_models = eval(self.config.get('MODELS', key, fallback='[]'))
+            except Exception:
+                current_models = []
+
+            # Filter out models whose 'name' matches any in model_names
+            updated_models = [m for m in current_models if m['name'] not in model_names]
+
+            # Only update if something actually changed
+            if len(updated_models) != len(current_models):
+                self.set_models(provider, updated_models)
+                print(f"✅ Removed models from '{provider}': {', '.join(set(model_names) - {m['name'] for m in updated_models})}")
+
+        # Persist changes
+        self.save_config()
+
+                
     
     def reset_models(self):
         if not self.config.has_section('MODELS'):
@@ -92,7 +174,7 @@ class ConfigManager:
         self.config.set('MODELS', 'groq_models', self.config.get('MODELS', 'groq_models_default', fallback='[]'))
         self.save_config()
 
-        
+    ### Current Model and API Management Methods ###    
     def get_current_model(self):
         if not self.config.has_section('MODELS'):
             self.config.add_section('MODELS')
@@ -122,58 +204,7 @@ class ConfigManager:
         self.config.set('MODELS', 'current_api', provider)
         self.save_config()
         
-
-    def set_models(self, provider, models):
-        if provider not in ['openai', 'groq']:
-            raise ValueError("Provider must be either 'openai' or 'groq'")
-        
-        if not self.config.has_section('MODELS'):
-            self.config.add_section('MODELS')
-            
-        self.config.set('MODELS', f'{provider}_models', str(models))
-        self.save_config()
-
-
-    def add_model(self, provider, model_name):
-        if provider not in ['openai', 'groq']:
-            raise ValueError("Provider must be either 'openai' or 'groq'")
-        
-        if not self.config.has_section('MODELS'):
-            self.config.add_section('MODELS')
-            
-        current_models = eval(self.config.get('MODELS', f'{provider}_models', fallback='[]'))
-        
-        if model_name not in current_models:
-            current_models.append(model_name)
-            self.set_models(provider, current_models)
-    
-
-    def remove_model(self, model_names):
-        if not isinstance(model_names, list):
-            model_names = [model_names]
-
-        if not self.config.has_section('MODELS'):
-            self.config.add_section('MODELS')
-            
-        # Get current models for each provider
-        openai_models = eval(self.config.get('MODELS', 'openai_models', fallback='[]'))
-        groq_models = eval(self.config.get('MODELS', 'groq_models', fallback='[]'))
-        
-        # Remove selected models from appropriate provider list
-        for model in model_names:
-            if model in openai_models:
-                openai_models.remove(model)
-            if model in groq_models:
-                groq_models.remove(model)
-        
-        # Update config for both providers
-        self.set_models('openai', openai_models)
-        self.set_models('groq', groq_models)
-        
-        # Save changes
-        self.save_config()
-            
-
+    ### Parameter Management Methods ###
     def get_parameters(self):
         if not self.config.has_section('PARAMETERS'):
             self.config.add_section('PARAMETERS')
@@ -198,7 +229,7 @@ class ConfigManager:
         self.config.set('PARAMETERS', key, str(value))
         self.save_config()
 
-
+    ### Localization Management Methods ###
     def get_localization(self):
         if not self.config.has_section('LOCALIZATION'):
             self.config.add_section('LOCALIZATION')
@@ -222,17 +253,24 @@ class ConfigManager:
         self.config.set('LOCALIZATION', key, str(value))
         self.save_config()
 
-
+    ### Pricing Prediction Helper Method ###
     def get_api_pricing(self):
         """Returns pricing for different APIs and models"""
-        return {
-            "openai": {
-                "gpt-4o": {"input": 0.03, "output": 0.06},
-                "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-                "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
-            },
-            "groq": {
-                "mixtral-8x7b-32768": {"input": 0.00027, "output": 0.00027},
-                "llama2-70b-4096": {"input": 0.0007, "output": 0.0009},
+        pricing = {}
+        for provider in ['openai', 'groq']:
+            key = f"{provider}_models"
+            models_str = self.config.get('MODELS', key, fallback='[]')
+            try:
+                models = eval(models_str)  # convert to list of dicts
+            except Exception:
+                models = []
+
+            # Build dictionary of model: {input, output}
+            provider_pricing = {
+                m['name']: {'input': m['input'], 'output': m['output']}
+                for m in models if all(k in m for k in ('name', 'input', 'output'))
             }
-        }
+
+            pricing[provider] = provider_pricing
+
+        return pricing

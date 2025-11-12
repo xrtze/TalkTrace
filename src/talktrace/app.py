@@ -47,8 +47,7 @@ app_ui = ui.page_sidebar(
         ui.input_action_button("language_toggle", "English", icon=icon_svg("globe")),        
         ui.output_ui("loc_dynamic_model_select"),
         ui.output_ui("loc_llm_switch"),
-        ui.output_ui("loc_cost_prediction"),
-        ui.output_ui("display_cost_prediction"),
+        ui.output_ui("loc_display_cost_prediction"),
         ui.output_ui("loc_button_analysis"),
         ui.output_text("start_analysis"),
         ui.output_ui("show_report_download_button"),
@@ -382,7 +381,10 @@ def server(input, output, session):
         try:
             # Use the encoding for the selected model
             if config.get_current_api() == "openai":
-                encoding = tiktoken.encoding_for_model(model.get())
+                try: 
+                    encoding = tiktoken.encoding_for_model(model.get())
+                except:
+                    encoding = tiktoken.get_encoding("cl100k_base")
             else:  # groq
                 encoding = tiktoken.get_encoding("cl100k_base")
             
@@ -404,10 +406,11 @@ def server(input, output, session):
         current_model = model.get()
         
         if api in pricing and current_model in pricing[api]:
-            rate = pricing[api][current_model]["input"]  # Cost per 1K tokens
-            cost = (tokens / 1000) * rate
-            return cost, rate
-        return None, None
+            rate_in = pricing[api][current_model]["input"]  # Cost per 1K tokens
+            rate_out = pricing[api][current_model]["output"]
+            cost = (tokens / 1000000) * rate_in + (tokens / 1000000) * rate_out * 4
+            return cost
+        return None
 
 
     # Update cost prediction when transcript/codebook changes
@@ -421,24 +424,19 @@ def server(input, output, session):
             user_prompt.get()
         )
         token_count.set(tokens)
-        cost, rate = calculate_estimated_cost(tokens)
+        cost = calculate_estimated_cost(tokens)
         estimated_cost.set(cost)
 
 
-    @render.ui
-    def loc_cost_prediction():
-        return ui.p(f"{t("sidebar", "cost_prediction")}:")
-
-
     @render.text
-    def display_cost_prediction():
-        req(transcript_data.get() != None)
+    def loc_display_cost_prediction():
+        req(transcript_data.get() != None, codebook_data.get() != None)
         if input.llm_switch():
             tokens = token_count.get()
             cost = estimated_cost.get()
             if tokens and cost:
-                return f"Tokens: ~{tokens:,} | Est. Cost: ${cost:.4f}"
-        return "Keine Abschätzung möglich."
+                return f"{t("sidebar", "tokens_aprox")} {tokens:} {t("sidebar", "cost_prediction")}: {cost:.4f} €"
+        return ""
 
 
     # Start Analysis Button
@@ -1289,17 +1287,22 @@ def server(input, output, session):
         m = ui.modal(
             ui.input_text("model_id", t("options", "model_id"), placeholder=t("options", "add_model_placeholder")),
             ui.input_select("model_provider", t("options", "model_provider"), choices=["openai", "groq"], selected="openai"),
+            ui.input_text("intput_cost", t("options", "input_cost"), placeholder=t("options", "cost_placeholder")),
+            ui.input_text("output_cost", t("options", "output_cost"), placeholder=t("options", "cost_placeholder")),
             title=t("options", "add_model_title"),
             easy_close=True,
             footer=(ui.input_action_button("model_add_confirm", t("options", "modal_button_add"),  class_="btn-success"), ui.modal_button(t("analysis", "modal_button_cancel"),  class_="btn-danger")),
         )
         ui.modal_show(m)
 
+
+    print(config.get_models())
+
     @reactive.effect
     @reactive.event(input.model_add_confirm)
     def confirm_add_model():
         req(input.model_id(), input.model_provider())
-        config.add_model(input.model_provider(), input.model_id())
+        config.add_model(input.model_provider(), input.model_id(), float(input.intput_cost()), float(input.output_cost()))
         # Update available models in the model options
         available_models = config.get_models()
         model_deleted.set(model_deleted.get() + 1) # for reactivity/invalidation

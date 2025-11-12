@@ -5,7 +5,7 @@ with(open("README.md", "r", encoding="utf-8")) as f:
 
     setup(
     name="talktrace",
-    version="0.3.3.1",
+    version="0.3.4",
     entry_points={
         "console_scripts": [
             "talktrace=talktrace.app:main",

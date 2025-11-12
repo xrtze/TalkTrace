@@ -205,9 +205,9 @@ def llm_analysis_openai(
                         "properties": {
                             "#": {"type": "integer", "description": "Nummerierung"},
                             "Shortcode": {"type": "string", "description": "Der Shortcode"},
-                            "Lehreräußerung (kurz)": {"type": "string", "description": "Die Äußerung"}
+                            "Impuls": {"type": "string", "description": "Die Äußerung"}
                         },
-                        "required": ["#", "Shortcode", "Lehreräußerung (kurz)"],
+                        "required": ["#", "Shortcode", "Impuls"],
                         "additionalProperties": False
                     },
                     "description": "Liste von Analyseobjekten"

@@ -393,11 +393,14 @@ def server(input, output, session):
             # Perform LLM-Request, if Activated
             if input.llm_switch():
                 req(input.codebook())
+                print("Running LLM Analysis...")
+                print(f"Using Model: {model.get()}")
+                print(f"codebook_data: {codebook_data.get()}")
                 # Call either Groq or OpenAI API based on User Selection
-                if not input.api_select():
+                if config.get_current_api() == "groq":
                     req(api_key_groq.get() != None)
                     llm_response = llm_analysis_groq(system_prompt.get(), user_prompt.get(), model.get(), transcript_data.get(), codebook_data.get(), Groq(api_key=api_key_groq.get()))
-                else:
+                elif config.get_current_api() == "openai":
                     req(api_key_openai.get() != None)
                     llm_response = llm_analysis_openai(system_prompt.get(), user_prompt.get(), model.get(), transcript_data.get(), codebook_data.get(), OpenAI(api_key=api_key_openai.get()))
                 
@@ -406,7 +409,8 @@ def server(input, output, session):
                 
                 existing_data = llm_analysis_data.get()
                 new_data = json.loads(llm_response)
-                new_data_df = pd.DataFrame(new_data['analysis'], columns=['#', t("report", "shortcode"), t("report", "teacher_statement")])
+                new_data_df = pd.DataFrame(new_data['analysis'], columns=['#', "Shortcode","Impuls"])
+
                 existing_data.append(new_data_df)
                 llm_analysis_data.set(list(existing_data)) # Important to Set as a List to Avoid Reactivity Issues, Due to Immutability Logic of Python!!!
                 analysis_llm_state.set(True)
@@ -1011,7 +1015,7 @@ def server(input, output, session):
         req(llm_analysis_data.get())
         analysis_df = llm_analysis_data.get()[-1]
         analysis_df['#'] = analysis_df.reset_index().index+1
-        analysis_df = analysis_df[['#', "Lehreräußerung (kurz)", "Shortcode"]]
+        analysis_df = analysis_df[['#', "Impuls", "Shortcode"]]
         analysis_df.columns = ['#', t("report", "teacher_statement"), t("report", "shortcode")]
         qual_stats_df.set(analysis_df)
         return analysis_df        

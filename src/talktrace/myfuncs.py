@@ -12,8 +12,8 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletion
 import tempfile
 from pyparsing import line
-from localization.translation import TRANSLATIONS
-from config.config_manager import ConfigManager
+from .localization.translation import TRANSLATIONS
+from .config.config_manager import ConfigManager
 
 
 # Helper function to get translated text

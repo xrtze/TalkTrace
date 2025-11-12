@@ -2,9 +2,9 @@ import re
 from httpx import get
 from matplotlib.style import available
 from numpy import extract, place
-from myfuncs import generate_report2, import_file, count_pupils, dialog_stats, count_teacher_impulses, llm_analysis_groq, llm_analysis_openai
-from config.config_manager import ConfigManager
-from localization.translation import TRANSLATIONS
+from .myfuncs import generate_report2, import_file, count_pupils, dialog_stats, count_teacher_impulses, llm_analysis_groq, llm_analysis_openai
+from .config.config_manager import ConfigManager
+from .localization.translation import TRANSLATIONS
 
 from pathlib import Path
 import sys
@@ -395,7 +395,6 @@ def server(input, output, session):
                 req(input.codebook())
                 print("Running LLM Analysis...")
                 print(f"Using Model: {model.get()}")
-                print(f"codebook_data: {codebook_data.get()}")
                 # Call either Groq or OpenAI API based on User Selection
                 if config.get_current_api() == "groq":
                     req(api_key_groq.get() != None)
@@ -433,7 +432,7 @@ def server(input, output, session):
         return ui.download_button("download_report", t("sidebar", "download_report"), icon = icon_svg("download")),
 
 
-    @render.download(filename=lambda: f"{date.today().isoformat()} - {t("results", "results_group")} {input.name_group.get()}.docx")
+    @render.download(filename=lambda: f"{date.today().isoformat()} - TalkTrace {t("results", "results_group")} {input.name_group.get()}.docx")
     def download_report():
         tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
         tmp_file.close()
@@ -496,7 +495,7 @@ def server(input, output, session):
         return ui.download_button("button_export_session", t("sidebar", "export_session"), icon = icon_svg("file-export")),
 
     
-    @render.download(filename=lambda: f"{date.today().isoformat()} - TalkTrace Report - Gruppe {input.name_group()}.pkl")
+    @render.download(filename=lambda: f"{date.today().isoformat()} - TalkTrace Session - {t("results", "results_group")} {input.name_group()} - {config.get_current_model}.pkl")
     def button_export_session():
         session_data = {
             "transcript_data": transcript_data.get(),

@@ -2,9 +2,9 @@ import re
 from httpx import get
 from matplotlib.style import available
 from numpy import extract, place
-from myfuncs import generate_report2, import_file, count_pupils, dialog_stats, count_teacher_impulses, llm_analysis_groq, llm_analysis_openai
-from config.config_manager import ConfigManager
-from localization.translation import TRANSLATIONS
+from .myfuncs import generate_report2, import_file, count_pupils, dialog_stats, count_teacher_impulses, llm_analysis_groq, llm_analysis_openai
+from .config.config_manager import ConfigManager
+from .localization.translation import TRANSLATIONS
 
 from pathlib import Path
 import sys
@@ -461,8 +461,6 @@ def server(input, output, session):
             # Perform LLM-Request, if Activated
             if input.llm_switch():
                 req(input.codebook())
-                print("Running LLM Analysis...")
-                print(f"Using Model: {model.get()}")
                 # Call either Groq or OpenAI API based on User Selection
                 if config.get_current_api() == "groq":
                     req(api_key_groq.get() != None)
@@ -1295,8 +1293,6 @@ def server(input, output, session):
         )
         ui.modal_show(m)
 
-
-    print(config.get_models())
 
     @reactive.effect
     @reactive.event(input.model_add_confirm)

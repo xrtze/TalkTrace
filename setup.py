@@ -5,7 +5,7 @@ with(open("README.md", "r", encoding="utf-8")) as f:
 
     setup(
     name="talktrace",
-    version="0.3.4",
+    version="0.4",
     entry_points={
         "console_scripts": [
             "talktrace=talktrace.app:main",
@@ -43,7 +43,8 @@ with(open("README.md", "r", encoding="utf-8")) as f:
         "pandas==2.2.3",
         "pyparsing==3.2.1",
         "python-docx==1.1.2",
-        "shiny==1.4.0"
+        "shiny==1.4.0",
+        "tiktoken>=0.12.0",
     ],
     extras_require={
         "dev": ["twine>=4.0.2"],

@@ -26,6 +26,7 @@ import tempfile
 import pickle
 import keyring
 import keyring.errors
+import tiktoken
 
 
 # Path Helper for css-files
@@ -46,6 +47,7 @@ app_ui = ui.page_sidebar(
         ui.input_action_button("language_toggle", "English", icon=icon_svg("globe")),        
         ui.output_ui("loc_dynamic_model_select"),
         ui.output_ui("loc_llm_switch"),
+        ui.output_ui("loc_display_cost_prediction"),
         ui.output_ui("loc_button_analysis"),
         ui.output_text("start_analysis"),
         ui.output_ui("show_report_download_button"),
@@ -293,6 +295,8 @@ def server(input, output, session):
     model_deleted = reactive.value(0) # for reactivitiy of model selection after model deletion
     current_lang = reactive.value(config.get_localization()["current_language"])
     code_legend_storage = reactive.value("Legende nicht ausgelesen")
+    estimated_cost = reactive.value(None)
+    token_count = reactive.value(None)
 
     ### Localization
     # Helper function to get translated text
@@ -371,6 +375,70 @@ def server(input, output, session):
     def loc_llm_switch():
         return ui.input_switch("llm_switch", t("sidebar", "llm_switch"), True)
 
+
+    def calculate_input_tokens(transcript, codebook, system_prompt_text, user_prompt_text):
+        """Calculate approximate token count for LLM request"""
+        try:
+            # Use the encoding for the selected model
+            if config.get_current_api() == "openai":
+                try: 
+                    encoding = tiktoken.encoding_for_model(model.get())
+                except:
+                    encoding = tiktoken.get_encoding("cl100k_base")
+            else:  # groq
+                encoding = tiktoken.get_encoding("cl100k_base")
+            
+            # Combine all text
+            all_text = f"{system_prompt_text}\n{user_prompt_text}\n{str(transcript)}\n{str(codebook)}"
+            
+            # Count tokens
+            tokens = len(encoding.encode(all_text))
+            return tokens
+        except Exception as e:
+            print(f"Token calculation error: {e}")
+            return 0
+
+
+    def calculate_estimated_cost(tokens):
+        """Calculate estimated cost based on token count and selected API/model"""
+        pricing = config.get_api_pricing()  # Add this to ConfigManager
+        api = config.get_current_api()
+        current_model = model.get()
+        
+        if api in pricing and current_model in pricing[api]:
+            rate_in = pricing[api][current_model]["input"]  # Cost per 1K tokens
+            rate_out = pricing[api][current_model]["output"]
+            cost = (tokens / 1000000) * rate_in + (tokens / 1000000) * rate_out * 4
+            return cost
+        return None
+
+
+    # Update cost prediction when transcript/codebook changes
+    @reactive.effect
+    def update_cost_prediction():
+        req(transcript_data.get() != None, codebook_data.get() != None, input.llm_switch())
+        tokens = calculate_input_tokens(
+            transcript_data.get(),
+            codebook_data.get() or "",
+            system_prompt.get(),
+            user_prompt.get()
+        )
+        token_count.set(tokens)
+        cost = calculate_estimated_cost(tokens)
+        estimated_cost.set(cost)
+
+
+    @render.text
+    def loc_display_cost_prediction():
+        req(transcript_data.get() != None, codebook_data.get() != None)
+        if input.llm_switch():
+            tokens = token_count.get()
+            cost = estimated_cost.get()
+            if tokens and cost:
+                return f"{t("sidebar", "tokens_aprox")} {tokens:} {t("sidebar", "cost_prediction")}: {cost:.4f} €"
+        return ""
+
+
     # Start Analysis Button
     @render.ui
     def loc_button_analysis():
@@ -393,9 +461,6 @@ def server(input, output, session):
             # Perform LLM-Request, if Activated
             if input.llm_switch():
                 req(input.codebook())
-                print("Running LLM Analysis...")
-                print(f"Using Model: {model.get()}")
-                print(f"codebook_data: {codebook_data.get()}")
                 # Call either Groq or OpenAI API based on User Selection
                 if config.get_current_api() == "groq":
                     req(api_key_groq.get() != None)
@@ -433,7 +498,7 @@ def server(input, output, session):
         return ui.download_button("download_report", t("sidebar", "download_report"), icon = icon_svg("download")),
 
 
-    @render.download(filename=lambda: f"{date.today().isoformat()} - {t("results", "results_group")} {input.name_group.get()}.docx")
+    @render.download(filename=lambda: f"{date.today().isoformat()} - TalkTrace {t("results", "results_group")} {input.name_group.get()}.docx")
     def download_report():
         tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
         tmp_file.close()
@@ -496,7 +561,7 @@ def server(input, output, session):
         return ui.download_button("button_export_session", t("sidebar", "export_session"), icon = icon_svg("file-export")),
 
     
-    @render.download(filename=lambda: f"{date.today().isoformat()} - TalkTrace Report - Gruppe {input.name_group()}.pkl")
+    @render.download(filename=lambda: f"{date.today().isoformat()} - TalkTrace Session - {t("results", "results_group")} {input.name_group()} - {config.get_current_model}.pkl")
     def button_export_session():
         session_data = {
             "transcript_data": transcript_data.get(),
@@ -1220,17 +1285,20 @@ def server(input, output, session):
         m = ui.modal(
             ui.input_text("model_id", t("options", "model_id"), placeholder=t("options", "add_model_placeholder")),
             ui.input_select("model_provider", t("options", "model_provider"), choices=["openai", "groq"], selected="openai"),
+            ui.input_text("intput_cost", t("options", "input_cost"), placeholder=t("options", "cost_placeholder")),
+            ui.input_text("output_cost", t("options", "output_cost"), placeholder=t("options", "cost_placeholder")),
             title=t("options", "add_model_title"),
             easy_close=True,
             footer=(ui.input_action_button("model_add_confirm", t("options", "modal_button_add"),  class_="btn-success"), ui.modal_button(t("analysis", "modal_button_cancel"),  class_="btn-danger")),
         )
         ui.modal_show(m)
 
+
     @reactive.effect
     @reactive.event(input.model_add_confirm)
     def confirm_add_model():
         req(input.model_id(), input.model_provider())
-        config.add_model(input.model_provider(), input.model_id())
+        config.add_model(input.model_provider(), input.model_id(), float(input.intput_cost()), float(input.output_cost()))
         # Update available models in the model options
         available_models = config.get_models()
         model_deleted.set(model_deleted.get() + 1) # for reactivity/invalidation

@@ -9,7 +9,9 @@ TRANSLATIONS = {
             "download_report": "Download Report",
             "import_session": "Import Session",
             "export_session": "Export Session", 
-            "reset_session": "Reset Session"
+            "reset_session": "Reset Session",
+            "cost_prediction": "Minimal Cost Estimation",
+            "tokens_aprox": "Input-Tokens: approx.",
         },
         "analysis": {
             "tab_title": "Analysis",
@@ -93,6 +95,9 @@ TRANSLATIONS = {
             "add_model_title": "Add a Model",
             "model_id": "Model ID",
             "model_provider": "Model Provider",
+            "input_cost": "Cost per 1M Input Tokens (€)",
+            "output_cost": "Cost per 1M Output Tokens (€)",
+            "cost_placeholder": "e.g., 0.40",
             "remove_model": "Remove Model",
             "modal_remove_model_warning": "Are you sure you want to remove the selected models? This action cannot be undone.",
             "modal_remove_confirm": "Yes, remove!",
@@ -164,7 +169,9 @@ TRANSLATIONS = {
             "download_report": "Report herunterladen",
             "import_session": "Sitzung importieren",
             "export_session": "Sitzung exportieren",
-            "reset_session": "Sitzung zurücksetzen"
+            "reset_session": "Sitzung zurücksetzen",
+            "tokens_aprox": "Input-Tokens: ca.",
+            "cost_prediction": "Geschätzte Mindestkosten",
         },
         "analysis": {
             "tab_title": "Analyse",
@@ -246,6 +253,9 @@ TRANSLATIONS = {
             "button_add": "Hinzufügen",
             "model_id": "Modell-ID",
             "model_provider": "Modell-Anbieter",
+            "input_cost": "Kosten pro 1M Input-Tokens (€)",
+            "output_cost": "Kosten pro 1M Output-Tokens (€)",
+            "cost_placeholder": "z.B., 0.40",
             "add_model_placeholder": "z.B., gpt-4o",
             "modal_button_add": "Hinzufügen",
             "add_model_title": "Ein Modell hinzufügen",

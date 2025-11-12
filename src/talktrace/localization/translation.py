@@ -9,7 +9,8 @@ TRANSLATIONS = {
             "download_report": "Download Report",
             "import_session": "Import Session",
             "export_session": "Export Session", 
-            "reset_session": "Reset Session"
+            "reset_session": "Reset Session",
+            "cost_prediction": "LLM Cost Estimation",
         },
         "analysis": {
             "tab_title": "Analysis",
@@ -164,7 +165,8 @@ TRANSLATIONS = {
             "download_report": "Report herunterladen",
             "import_session": "Sitzung importieren",
             "export_session": "Sitzung exportieren",
-            "reset_session": "Sitzung zurücksetzen"
+            "reset_session": "Sitzung zurücksetzen",
+            "cost_prediction": "LLM-Kostenschätzung",
         },
         "analysis": {
             "tab_title": "Analyse",

@@ -2,9 +2,9 @@ import re
 from httpx import get
 from matplotlib.style import available
 from numpy import extract, place
-from .myfuncs import generate_report2, import_file, count_pupils, dialog_stats, count_teacher_impulses, llm_analysis_groq, llm_analysis_openai
-from .config.config_manager import ConfigManager
-from .localization.translation import TRANSLATIONS
+from myfuncs import generate_report2, import_file, count_pupils, dialog_stats, count_teacher_impulses, llm_analysis_groq, llm_analysis_openai
+from config.config_manager import ConfigManager
+from localization.translation import TRANSLATIONS
 
 from pathlib import Path
 import sys
@@ -26,6 +26,7 @@ import tempfile
 import pickle
 import keyring
 import keyring.errors
+import tiktoken
 
 
 # Path Helper for css-files
@@ -46,6 +47,8 @@ app_ui = ui.page_sidebar(
         ui.input_action_button("language_toggle", "English", icon=icon_svg("globe")),        
         ui.output_ui("loc_dynamic_model_select"),
         ui.output_ui("loc_llm_switch"),
+        ui.output_ui("loc_cost_prediction"),
+        ui.output_ui("display_cost_prediction"),
         ui.output_ui("loc_button_analysis"),
         ui.output_text("start_analysis"),
         ui.output_ui("show_report_download_button"),
@@ -293,6 +296,8 @@ def server(input, output, session):
     model_deleted = reactive.value(0) # for reactivitiy of model selection after model deletion
     current_lang = reactive.value(config.get_localization()["current_language"])
     code_legend_storage = reactive.value("Legende nicht ausgelesen")
+    estimated_cost = reactive.value(None)
+    token_count = reactive.value(None)
 
     ### Localization
     # Helper function to get translated text
@@ -370,6 +375,71 @@ def server(input, output, session):
     @render.ui
     def loc_llm_switch():
         return ui.input_switch("llm_switch", t("sidebar", "llm_switch"), True)
+
+
+    def calculate_input_tokens(transcript, codebook, system_prompt_text, user_prompt_text):
+        """Calculate approximate token count for LLM request"""
+        try:
+            # Use the encoding for the selected model
+            if config.get_current_api() == "openai":
+                encoding = tiktoken.encoding_for_model(model.get())
+            else:  # groq
+                encoding = tiktoken.get_encoding("cl100k_base")
+            
+            # Combine all text
+            all_text = f"{system_prompt_text}\n{user_prompt_text}\n{str(transcript)}\n{str(codebook)}"
+            
+            # Count tokens
+            tokens = len(encoding.encode(all_text))
+            return tokens
+        except Exception as e:
+            print(f"Token calculation error: {e}")
+            return 0
+
+
+    def calculate_estimated_cost(tokens):
+        """Calculate estimated cost based on token count and selected API/model"""
+        pricing = config.get_api_pricing()  # Add this to ConfigManager
+        api = config.get_current_api()
+        current_model = model.get()
+        
+        if api in pricing and current_model in pricing[api]:
+            rate = pricing[api][current_model]["input"]  # Cost per 1K tokens
+            cost = (tokens / 1000) * rate
+            return cost, rate
+        return None, None
+
+
+    # Update cost prediction when transcript/codebook changes
+    @reactive.effect
+    def update_cost_prediction():
+        req(transcript_data.get() != None, codebook_data.get() != None, input.llm_switch())
+        tokens = calculate_input_tokens(
+            transcript_data.get(),
+            codebook_data.get() or "",
+            system_prompt.get(),
+            user_prompt.get()
+        )
+        token_count.set(tokens)
+        cost, rate = calculate_estimated_cost(tokens)
+        estimated_cost.set(cost)
+
+
+    @render.ui
+    def loc_cost_prediction():
+        return ui.p(f"{t("sidebar", "cost_prediction")}:")
+
+
+    @render.text
+    def display_cost_prediction():
+        req(transcript_data.get() != None)
+        if input.llm_switch():
+            tokens = token_count.get()
+            cost = estimated_cost.get()
+            if tokens and cost:
+                return f"Tokens: ~{tokens:,} | Est. Cost: ${cost:.4f}"
+        return "Keine Abschätzung möglich."
+
 
     # Start Analysis Button
     @render.ui

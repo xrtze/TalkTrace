@@ -221,3 +221,18 @@ class ConfigManager:
             
         self.config.set('LOCALIZATION', key, str(value))
         self.save_config()
+
+
+    def get_api_pricing(self):
+        """Returns pricing for different APIs and models"""
+        return {
+            "openai": {
+                "gpt-4o": {"input": 0.03, "output": 0.06},
+                "gpt-4-turbo": {"input": 0.01, "output": 0.03},
+                "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
+            },
+            "groq": {
+                "mixtral-8x7b-32768": {"input": 0.00027, "output": 0.00027},
+                "llama2-70b-4096": {"input": 0.0007, "output": 0.0009},
+            }
+        }
